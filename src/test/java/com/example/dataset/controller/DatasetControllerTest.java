@@ -21,6 +21,14 @@ import com.example.dataset.service.DatasetRecordService;
 
 import tools.jackson.databind.ObjectMapper;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+
+import java.util.List;
+import java.util.Map;
+
+import com.example.dataset.exception.DatasetNotFoundException;
+import com.example.dataset.service.DatasetQueryService;
+
 @WebMvcTest(DatasetController.class)
 class DatasetControllerTest {
 
@@ -29,6 +37,9 @@ class DatasetControllerTest {
 
     @MockitoBean
     private DatasetRecordService service;
+    
+    @MockitoBean
+    private DatasetQueryService queryService;
 
     private ObjectMapper mapper = new ObjectMapper();
 
@@ -71,5 +82,32 @@ class DatasetControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(BODY))
                 .andExpect(status().isConflict());
+    }
+    @Test
+    void query_groupBy_returns200() throws Exception {
+        var record = mapper.readTree("{\"id\":1,\"name\":\"John\",\"department\":\"Engineering\"}");
+        when(queryService.groupBy("employees", "department"))
+                .thenReturn(Map.of("Engineering", List.of(record)));
+
+        mockMvc.perform(get("/api/dataset/employees/query")
+                        .param("groupBy", "department"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.groupedRecords.Engineering[0].name").value("John"));
+    }
+
+    @Test
+    void query_withoutParams_returns400() throws Exception {
+        mockMvc.perform(get("/api/dataset/employees/query"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void query_unknownDataset_returns404() throws Exception {
+        when(queryService.groupBy("ghost", "department"))
+                .thenThrow(new DatasetNotFoundException("Dataset 'ghost' not found"));
+
+        mockMvc.perform(get("/api/dataset/ghost/query")
+                        .param("groupBy", "department"))
+                .andExpect(status().isNotFound());
     }
 }
