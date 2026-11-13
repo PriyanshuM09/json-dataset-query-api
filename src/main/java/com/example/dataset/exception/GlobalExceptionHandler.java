@@ -25,6 +25,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateRecordException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
+    @ExceptionHandler(DatasetNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(DatasetNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
 
     private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status, String message) {
         ErrorResponse body = new ErrorResponse(status.value(), status.getReasonPhrase(), message);
