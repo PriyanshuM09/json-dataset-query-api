@@ -18,6 +18,7 @@ import com.example.dataset.service.DatasetRecordService;
 
 import tools.jackson.databind.JsonNode;
 
+import com.example.dataset.dto.SortedRecordsResponse;
 @RestController
 @RequestMapping("/api/dataset")
 public class DatasetController {
@@ -41,16 +42,12 @@ public class DatasetController {
     }
 
     @GetMapping("/{datasetName}/query")
-    public ResponseEntity<GroupedRecordsResponse> query(
+    public ResponseEntity<Object> query(
             @PathVariable String datasetName,
-            @RequestParam(required = false) String groupBy) {
+            @RequestParam(required = false) String groupBy,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String order) {
 
-        if (groupBy == null || groupBy.isBlank()) {
-            throw new InvalidRequestException("Query parameter 'groupBy' is required");
-        }
-
-        GroupedRecordsResponse response =
-                new GroupedRecordsResponse(queryService.groupBy(datasetName, groupBy));
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(queryService.query(datasetName, groupBy, sortBy, order));
     }
 }

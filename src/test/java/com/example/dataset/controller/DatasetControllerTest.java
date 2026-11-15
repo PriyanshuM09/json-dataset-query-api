@@ -3,9 +3,13 @@ package com.example.dataset.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,20 +18,16 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.example.dataset.dto.GroupedRecordsResponse;
 import com.example.dataset.dto.InsertRecordResponse;
+import com.example.dataset.dto.SortedRecordsResponse;
+import com.example.dataset.exception.DatasetNotFoundException;
 import com.example.dataset.exception.DuplicateRecordException;
 import com.example.dataset.exception.InvalidRequestException;
+import com.example.dataset.service.DatasetQueryService;
 import com.example.dataset.service.DatasetRecordService;
 
 import tools.jackson.databind.ObjectMapper;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-
-import java.util.List;
-import java.util.Map;
-
-import com.example.dataset.exception.DatasetNotFoundException;
-import com.example.dataset.service.DatasetQueryService;
 
 @WebMvcTest(DatasetController.class)
 class DatasetControllerTest {
@@ -37,7 +37,7 @@ class DatasetControllerTest {
 
     @MockitoBean
     private DatasetRecordService service;
-    
+
     @MockitoBean
     private DatasetQueryService queryService;
 
@@ -83,11 +83,12 @@ class DatasetControllerTest {
                         .content(BODY))
                 .andExpect(status().isConflict());
     }
+
     @Test
     void query_groupBy_returns200() throws Exception {
         var record = mapper.readTree("{\"id\":1,\"name\":\"John\",\"department\":\"Engineering\"}");
-        when(queryService.groupBy("employees", "department"))
-                .thenReturn(Map.of("Engineering", List.of(record)));
+        when(queryService.query("employees", "department", null, null))
+                .thenReturn(new GroupedRecordsResponse(Map.of("Engineering", List.of(record))));
 
         mockMvc.perform(get("/api/dataset/employees/query")
                         .param("groupBy", "department"))
@@ -96,14 +97,21 @@ class DatasetControllerTest {
     }
 
     @Test
-    void query_withoutParams_returns400() throws Exception {
-        mockMvc.perform(get("/api/dataset/employees/query"))
-                .andExpect(status().isBadRequest());
+    void query_sortBy_returns200() throws Exception {
+        var record = mapper.readTree("{\"id\":2,\"name\":\"Jane\",\"age\":25}");
+        when(queryService.query("employees", null, "age", "asc"))
+                .thenReturn(new SortedRecordsResponse(List.of(record)));
+
+        mockMvc.perform(get("/api/dataset/employees/query")
+                        .param("sortBy", "age")
+                        .param("order", "asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sortedRecords[0].name").value("Jane"));
     }
 
     @Test
     void query_unknownDataset_returns404() throws Exception {
-        when(queryService.groupBy("ghost", "department"))
+        when(queryService.query("ghost", "department", null, null))
                 .thenThrow(new DatasetNotFoundException("Dataset 'ghost' not found"));
 
         mockMvc.perform(get("/api/dataset/ghost/query")

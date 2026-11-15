@@ -7,10 +7,22 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import com.example.dataset.dto.GroupedRecordsResponse;
+
 import tools.jackson.databind.JsonNode;
 
 @Component
-public class GroupByOperation {
+public class GroupByOperation implements QueryOperation {
+
+    @Override
+    public String name() {
+        return "groupBy";
+    }
+
+    @Override
+    public Object execute(List<JsonNode> records, String field, String order) {
+        return new GroupedRecordsResponse(apply(records, field));
+    }
 
     public Map<String, List<JsonNode>> apply(List<JsonNode> records, String field) {
         Map<String, List<JsonNode>> groups = new LinkedHashMap<>();
