@@ -118,4 +118,14 @@ class DatasetControllerTest {
                         .param("groupBy", "department"))
                 .andExpect(status().isNotFound());
     }
+    @Test
+    void query_unexpectedError_returns500() throws Exception {
+        when(queryService.query("employees", "department", null, null))
+                .thenThrow(new RuntimeException("database exploded"));
+
+        mockMvc.perform(get("/api/dataset/employees/query")
+                        .param("groupBy", "department"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Internal server error"));
+    }
 }
