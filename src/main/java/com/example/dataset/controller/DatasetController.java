@@ -10,15 +10,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.dataset.dto.GroupedRecordsResponse;
 import com.example.dataset.dto.InsertRecordResponse;
-import com.example.dataset.exception.InvalidRequestException;
 import com.example.dataset.service.DatasetQueryService;
 import com.example.dataset.service.DatasetRecordService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import tools.jackson.databind.JsonNode;
 
-import com.example.dataset.dto.SortedRecordsResponse;
+@Tag(name = "Dataset", description = "Insert and query JSON records")
 @RestController
 @RequestMapping("/api/dataset")
 public class DatasetController {
@@ -32,8 +36,19 @@ public class DatasetController {
         this.queryService = queryService;
     }
 
+    @Operation(
+        summary = "Insert a JSON record into a dataset",
+        description = "The record must contain an 'id'. A duplicate id in the same dataset returns 409.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(type = "object"),
+                examples = @ExampleObject(
+                    value = "{\"id\": 1, \"name\": \"John Doe\", \"age\": 30, \"department\": \"Engineering\"}"))))
     @PostMapping("/{datasetName}/record")
     public ResponseEntity<InsertRecordResponse> insertRecord(
+            @Parameter(description = "Dataset name", example = "employee_dataset")
             @PathVariable String datasetName,
             @RequestBody JsonNode body) {
 
@@ -41,11 +56,18 @@ public class DatasetController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(
+        summary = "Query a dataset with group-by or sort-by",
+        description = "Pass either 'groupBy' or 'sortBy', not both. 'order' is asc (default) or desc.")
     @GetMapping("/{datasetName}/query")
     public ResponseEntity<Object> query(
+            @Parameter(description = "Dataset name", example = "employee_dataset")
             @PathVariable String datasetName,
+            @Parameter(description = "Field to group by", example = "department")
             @RequestParam(required = false) String groupBy,
+            @Parameter(description = "Field to sort by", example = "age")
             @RequestParam(required = false) String sortBy,
+            @Parameter(description = "asc or desc (default asc)", example = "asc")
             @RequestParam(required = false) String order) {
 
         return ResponseEntity.ok(queryService.query(datasetName, groupBy, sortBy, order));
